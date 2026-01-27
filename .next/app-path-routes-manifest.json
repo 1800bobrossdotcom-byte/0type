@@ -1,0 +1,11 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/diagnostic/page": "/diagnostic",
+  "/studio/page": "/studio",
+  "/page": "/",
+  "/direct-test/page": "/direct-test",
+  "/test-lab/page": "/test-lab",
+  "/brushes/page": "/brushes",
+  "/verify/page": "/verify",
+  "/sketchpad/page": "/sketchpad"
+}
