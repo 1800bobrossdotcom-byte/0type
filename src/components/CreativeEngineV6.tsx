@@ -50,6 +50,88 @@ import {
   renderPerfectStrokeAnimated,
   renderPerfectStroke,
 } from '@/lib/perfect-renderer';
+import { getStroke, StrokeOptions } from 'perfect-freehand';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LIVE STROKE PREVIEW - Shows current preset in action
+// ═══════════════════════════════════════════════════════════════════════════
+
+// SVG path helper
+function getSmoothSvgPath(points: number[][]): string {
+  if (points.length < 4) return '';
+  let d = `M ${points[0][0].toFixed(2)},${points[0][1].toFixed(2)} `;
+  for (let i = 1; i < points.length - 2; i++) {
+    const xc = (points[i][0] + points[i + 1][0]) / 2;
+    const yc = (points[i][1] + points[i + 1][1]) / 2;
+    d += `Q ${points[i][0].toFixed(2)},${points[i][1].toFixed(2)} ${xc.toFixed(2)},${yc.toFixed(2)} `;
+  }
+  const last = points.length - 1;
+  d += `Q ${points[last - 1][0].toFixed(2)},${points[last - 1][1].toFixed(2)} ${points[last][0].toFixed(2)},${points[last][1].toFixed(2)}`;
+  return d + ' Z';
+}
+
+// Live preview test points - smooth S-curve
+const PREVIEW_POINTS: [number, number, number][] = [
+  [30, 15, 0.3], [50, 25, 0.5], [65, 40, 0.7], [60, 55, 0.8],
+  [45, 65, 0.7], [30, 75, 0.5], [25, 90, 0.6], [35, 105, 0.8],
+  [55, 115, 0.6], [75, 120, 0.4],
+];
+
+function LiveStrokePreview({ preset }: { preset: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Get preset style
+    const presetData = STROKE_PRESETS[preset];
+    const style = presetData?.style || {};
+    
+    // Build options
+    const options: StrokeOptions = {
+      size: style.size || 12,
+      thinning: style.thinning ?? 0.5,
+      smoothing: style.smoothing ?? 0.5,
+      streamline: style.streamline ?? 0.5,
+      simulatePressure: style.simulatePressure ?? true,
+      start: { taper: style.taperStart || 0, cap: style.capStart ?? true },
+      end: { taper: style.taperEnd || 0, cap: style.capEnd ?? true },
+      last: true,
+    };
+    
+    // Generate outline
+    const outlinePoints = getStroke(PREVIEW_POINTS, options);
+    if (outlinePoints.length < 3) return;
+    
+    // Draw stroke
+    const pathData = getSmoothSvgPath(outlinePoints);
+    const path = new Path2D(pathData);
+    
+    // Category-based color
+    const color = presetData?.category === 'expressive' ? '#ff6b9d' :
+                  presetData?.category === 'classic' ? '#6bc4ff' : '#c46bff';
+    
+    ctx.fillStyle = color;
+    ctx.fill(path);
+    
+  }, [preset]);
+  
+  return (
+    <canvas 
+      ref={canvasRef} 
+      width={100} 
+      height={130} 
+      className="rounded border border-[#222]"
+    />
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // B0B & D0T - The Core Intelligence
@@ -952,9 +1034,9 @@ export default function CreativeEngineV6() {
       </header>
 
       <div className="max-w-7xl mx-auto p-6">
-        <div className="grid lg:grid-cols-5 gap-6">
-          {/* Main Canvas */}
-          <div className="lg:col-span-3 space-y-4">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Main Canvas - Centered */}
+          <div className="flex-1 lg:max-w-[700px] mx-auto space-y-4">
             {/* Active designers */}
             <div className="grid grid-cols-2 gap-2">
               {activeDrawers.length > 0 ? (
@@ -986,9 +1068,9 @@ export default function CreativeEngineV6() {
               )}
             </div>
 
-            {/* Canvas - Clean, no distracting animations */}
-            <div className="border border-[#1a1a1a] overflow-hidden bg-[#0a0a0a]">
-              <canvas ref={canvasRef} width={600} height={480} className="w-full" />
+            {/* Canvas - Clean, centered with subtle glow */}
+            <div className="border border-[#1a1a1a] overflow-hidden bg-[#050508] rounded-lg shadow-[0_0_60px_rgba(255,255,255,0.03)] flex items-center justify-center">
+              <canvas ref={canvasRef} width={600} height={480} className="w-full max-w-full" />
             </div>
 
             {/* Preview */}
@@ -1017,11 +1099,17 @@ export default function CreativeEngineV6() {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Stroke Presets - NEW! */}
-            <div className="border border-[#1a1a1a]">
-              <div className="px-4 py-2 border-b border-[#1a1a1a] flex items-center justify-between">
-                <span className="text-xs font-mono text-[#555]">Stroke Engine</span>
+          <div className="lg:w-[340px] lg:flex-shrink-0 space-y-4">
+            {/* Stroke Presets with Live Preview */}
+            <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between bg-[#0a0a0f]">
+                <div className="flex items-center gap-3">
+                  <LiveStrokePreview preset={strokePreset} />
+                  <div>
+                    <span className="text-sm font-medium text-white block">{STROKE_PRESETS[strokePreset]?.name || 'Stroke Engine'}</span>
+                    <span className="text-[10px] text-[#555]">{STROKE_PRESETS[strokePreset]?.description?.slice(0, 40)}...</span>
+                  </div>
+                </div>
                 <span className={`text-[8px] px-1.5 py-0.5 rounded ${
                   creationMode === 'pure' 
                     ? 'bg-pink-900/50 text-pink-400' 
