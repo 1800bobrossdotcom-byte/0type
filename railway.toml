@@ -5,7 +5,7 @@ builder = "nixpacks"
 nixPkgs = ["nodejs_22", "npm-9_x"]
 
 [build.nixpacksPlan.phases.install]
-cmds = ["npm ci --include=dev"]
+cmds = ["npm install --include=dev"]
 
 [deploy]
 startCommand = "npm run start"
